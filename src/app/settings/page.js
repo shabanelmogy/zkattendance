@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState(null);
   const [saveResult, setSaveResult] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { t, lang } = useI18n();
 
   // File browser state
@@ -115,6 +116,7 @@ export default function SettingsPage() {
     if (!file) return;
 
     setUploading(true);
+    setUploadProgress(0);
     setTestResult(null);
     setSaveResult(null);
 
@@ -122,11 +124,25 @@ export default function SettingsPage() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/settings/upload', {
-        method: 'POST',
-        body: formData,
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/settings/upload');
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        };
+        xhr.onload = () => {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (err) {
+            reject(new Error('Invalid response'));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(formData);
       });
-      const data = await res.json();
+
       if (data.success) {
         setSettings(data.settings);
         setEditPath(data.dbPath);
@@ -186,37 +202,44 @@ export default function SettingsPage() {
               </div>
 
               {/* Path input row */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  id="settings-db-path"
-                  className="input-field"
-                  style={{ flex: 1, height: 42, fontSize: '0.855rem', fontFamily: 'monospace', textAlign: 'left' }}
-                  type="text"
-                  placeholder="C:\path\to\your\database.mdb"
-                  value={editPath}
-                  onChange={e => { setEditPath(e.target.value); setTestResult(null); setSaveResult(null); }}
-                  dir="ltr"
-                />
-                <button
-                  id="browse-db-btn"
-                  className="btn btn-outline"
-                  style={{ height: 42, gap: 6 }}
-                  onClick={openBrowser}
-                  title="Browse Server Files"
-                >
-                  <FolderOpen size={15} /> {t('settings.browse') || 'Browse'}
-                </button>
-                <label className="btn btn-primary" style={{ height: 42, gap: 6, cursor: 'pointer', margin: 0 }}>
+              <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <input
-                    type="file"
-                    accept=".mdb,.accdb"
-                    style={{ display: 'none' }}
-                    onChange={handleUpload}
-                    disabled={uploading}
+                    id="settings-db-path"
+                    className="input-field"
+                    style={{ flex: 1, height: 42, fontSize: '0.855rem', fontFamily: 'monospace', textAlign: 'left' }}
+                    type="text"
+                    placeholder="C:\path\to\your\database.mdb"
+                    value={editPath}
+                    onChange={e => { setEditPath(e.target.value); setTestResult(null); setSaveResult(null); }}
+                    dir="ltr"
                   />
-                  {uploading ? <span className="spinner" style={{ width: 15, height: 15, borderWidth: 2 }} /> : <Upload size={15} />}
-                  {uploading ? (lang === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (lang === 'ar' ? 'رفع قاعدة البيانات' : 'Upload Database')}
-                </label>
+                  <button
+                    id="browse-db-btn"
+                    className="btn btn-outline"
+                    style={{ height: 42, gap: 6 }}
+                    onClick={openBrowser}
+                    title="Browse Server Files"
+                  >
+                    <FolderOpen size={15} /> {t('settings.browse') || 'Browse'}
+                  </button>
+                  <label className="btn btn-primary" style={{ height: 42, gap: 6, cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="file"
+                      accept=".mdb,.accdb"
+                      style={{ display: 'none' }}
+                      onChange={handleUpload}
+                      disabled={uploading}
+                    />
+                    {uploading ? <span className="spinner" style={{ width: 15, height: 15, borderWidth: 2 }} /> : <Upload size={15} />}
+                    {uploading ? (lang === 'ar' ? `جاري الرفع... ${uploadProgress}%` : `Uploading... ${uploadProgress}%`) : (lang === 'ar' ? 'رفع قاعدة البيانات' : 'Upload Database')}
+                  </label>
+                </div>
+                {uploading && (
+                  <div style={{ width: '100%', height: 4, background: 'var(--border-strong)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: 'var(--accent-blue)', width: `${uploadProgress}%`, transition: 'width 0.2s ease-out' }} />
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
