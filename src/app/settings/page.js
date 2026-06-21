@@ -4,10 +4,8 @@ import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import { Settings as SettingsIcon, FolderOpen, Database, CheckCircle, XCircle, Save, RefreshCw, HardDrive, ChevronRight, FileText, ArrowLeft, Clock, Upload } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
-import { upload } from '@vercel/blob/client';
 
-const BLOB_DB_PATH = 'zkattendance/database.mdb';
-const BLOB_DB_SOURCE = `blob:${BLOB_DB_PATH}`;
+const BLOB_DB_SOURCE = 'blob:zkattendance/database.mdb';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({ dbPath: '', workStartHour: 8, workEndHour: 17 });
@@ -147,23 +145,6 @@ export default function SettingsPage() {
         mode = config.storage;
         setStorageMode(mode);
         setStorageError(config.error || null);
-      }
-
-      if (mode === 'blob') {
-        await upload(BLOB_DB_PATH, file, {
-          access: 'private',
-          handleUploadUrl: '/api/settings/upload',
-          clientPayload: file.name,
-          multipart: true,
-          onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
-        });
-
-        const uploadedSettings = { ...settings, dbPath: BLOB_DB_SOURCE, storage: 'blob' };
-        setSettings(uploadedSettings);
-        setEditPath(BLOB_DB_SOURCE);
-        setSaveResult({ success: true, error: null });
-        await testConnection(BLOB_DB_SOURCE);
-        return;
       }
 
       const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB per chunk (under Vercel's 4.5MB limit)

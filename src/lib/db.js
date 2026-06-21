@@ -64,7 +64,7 @@ export async function getReader(source) {
     if (!blobReaderPromise) {
       blobReaderPromise = (async () => {
         const blobResult = await getBlob(BLOB_DB_PATH, {
-          access: 'private',
+          access: 'public',
           useCache: false,
           ifNoneMatch: cachedDbPath === BLOB_DB_SOURCE ? cachedMtime : undefined,
         });
