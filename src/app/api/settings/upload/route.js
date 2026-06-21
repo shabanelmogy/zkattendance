@@ -12,10 +12,8 @@ export async function GET() {
   }
 
   if (process.env.VERCEL) {
-    return NextResponse.json({
-      storage: 'unconfigured',
-      error: 'Connect a private Vercel Blob store to this project before uploading a database.',
-    });
+    // On Vercel without Blob — allow /tmp upload as fallback (ephemeral but functional)
+    return NextResponse.json({ storage: 'vercel-tmp' });
   }
 
   return NextResponse.json({ storage: 'filesystem' });
@@ -54,11 +52,103 @@ export async function POST(request) {
       return NextResponse.json(result);
     }
 
+    if (process.env.VERCEL && !hasBlobStorage()) {
+      // Vercel without Blob — use /tmp (ephemeral storage, persists during function invocation)
+      const fileNameHeader = request.headers.get('x-file-name');
+      if (!fileNameHeader) {
+        return NextResponse.json({ error: 'No file uploaded or filename missing.' }, { status: 400 });
+      }
+      const fileName = decodeURIComponent(fileNameHeader);
+      const extension = path.extname(fileName).toLowerCase();
+
+      if (extension !== '.mdb' && extension !== '.accdb') {
+        return NextResponse.json({ error: 'Only MS Access database files (.mdb, .accdb) are allowed.' }, { status: 400 });
+      }
+
+      // Check if this is a chunked upload
+      const chunkIndex = request.headers.get('x-chunk-index');
+      const totalChunks = request.headers.get('x-total-chunks');
+      const uploadId = request.headers.get('x-upload-id');
+
+      const tmpDir = '/tmp/zkattendance';
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+
+      const arrayBuffer = await request.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.length === 0) {
+        return NextResponse.json({ error: 'The selected database file is empty.' }, { status: 400 });
+      }
+
+      // Chunked upload
+      if (chunkIndex !== null && totalChunks !== null && uploadId) {
+        const currentChunk = Number(chunkIndex);
+        const total = Number(totalChunks);
+        if (!/^[-_a-zA-Z0-9]+$/.test(uploadId) || !Number.isInteger(currentChunk) || !Number.isInteger(total) || currentChunk < 0 || total < 1 || currentChunk >= total) {
+          return NextResponse.json({ error: 'Invalid upload chunk metadata.' }, { status: 400 });
+        }
+
+        const chunksDir = path.join(tmpDir, `_chunks_${uploadId}`);
+        if (!fs.existsSync(chunksDir)) {
+          fs.mkdirSync(chunksDir, { recursive: true });
+        }
+
+        const chunkPath = path.join(chunksDir, `chunk_${String(currentChunk).padStart(6, '0')}`);
+        fs.writeFileSync(chunkPath, buffer);
+
+        if (currentChunk === total - 1) {
+          const safeName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          const destPath = path.join(tmpDir, safeName);
+
+          const chunks = [];
+          for (let i = 0; i < total; i++) {
+            const cp = path.join(chunksDir, `chunk_${String(i).padStart(6, '0')}`);
+            if (fs.existsSync(cp)) {
+              chunks.push(fs.readFileSync(cp));
+            } else {
+              fs.rmSync(chunksDir, { recursive: true, force: true });
+              return NextResponse.json({ error: `Missing chunk ${i}` }, { status: 400 });
+            }
+          }
+
+          const fullBuffer = Buffer.concat(chunks);
+          fs.writeFileSync(destPath, fullBuffer);
+          fs.rmSync(chunksDir, { recursive: true, force: true });
+
+          // Update settings in /tmp (bundle settings.json is read-only on Vercel)
+          const tmpSettingsFile = '/tmp/zkattendance/settings.json';
+          let settings = {};
+          try { settings = JSON.parse(fs.readFileSync(tmpSettingsFile, 'utf8')); } catch {}
+          settings.dbPath = destPath;
+          fs.writeFileSync(tmpSettingsFile, JSON.stringify(settings, null, 2), 'utf8');
+
+          return NextResponse.json({ success: true, dbPath: destPath, settings, warning: 'Database stored in temporary storage. It will be lost when the server restarts. For permanent storage, add Vercel Blob to your project.' });
+        }
+
+        return NextResponse.json({ success: true, chunk: currentChunk, total });
+      }
+
+      // Single-request upload
+      const safeName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const destPath = path.join(tmpDir, safeName);
+      fs.writeFileSync(destPath, buffer);
+
+      const tmpSettingsFile = '/tmp/zkattendance/settings.json';
+      let settings = {};
+      try { settings = JSON.parse(fs.readFileSync(tmpSettingsFile, 'utf8')); } catch {}
+      settings.dbPath = destPath;
+      fs.writeFileSync(tmpSettingsFile, JSON.stringify(settings, null, 2), 'utf8');
+
+      return NextResponse.json({ success: true, dbPath: destPath, settings, warning: 'Database stored in temporary storage. It will be lost when the server restarts. For permanent storage, add Vercel Blob to your project.' });
+    }
+
     if (process.env.VERCEL) {
       return NextResponse.json({
         error: hasBlobStorage()
           ? 'Deployed database uploads must use the Vercel Blob client upload flow.'
-          : 'Connect a private Vercel Blob store to this project before uploading a database.',
+          : 'Unexpected state.',
       }, { status: 503 });
     }
 

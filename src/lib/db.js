@@ -27,13 +27,25 @@ export function hasBlobStorage() {
 
 /** Read DB path dynamically — changes in Settings page take effect immediately */
 function getDbPath() {
+  const isWindows = process.platform === 'win32';
+  const normalize = (p) => isWindows ? p.replace(/\//g, '\\') : p;
+
+  // On Vercel, settings.json in the bundle is read-only, but /tmp settings may exist
+  const tmpSettings = '/tmp/zkattendance/settings.json';
+  try {
+    if (fs.existsSync(tmpSettings)) {
+      const s = JSON.parse(fs.readFileSync(tmpSettings, 'utf8'));
+      if (s.dbPath && fs.existsSync(s.dbPath)) return normalize(s.dbPath);
+    }
+  } catch {}
+  
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
       const s = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-      if (s.dbPath) return s.dbPath.replace(/\//g, '\\');
+      if (s.dbPath) return normalize(s.dbPath);
     }
   } catch {}
-  return (process.env.DB_PATH || DEFAULT_DB).replace(/\//g, '\\');
+  return normalize(process.env.DB_PATH || DEFAULT_DB);
 }
 
 import MDBReader from 'mdb-reader';

@@ -149,10 +149,6 @@ export default function SettingsPage() {
         setStorageError(config.error || null);
       }
 
-      if (mode === 'unconfigured') {
-        throw new Error(storageError || 'Connect a private Vercel Blob store before uploading a database.');
-      }
-
       if (mode === 'blob') {
         await upload(BLOB_DB_PATH, file, {
           access: 'private',
@@ -238,7 +234,7 @@ export default function SettingsPage() {
       if (finalData && finalData.success) {
         setSettings(finalData.settings);
         setEditPath(finalData.dbPath);
-        setSaveResult({ success: true, error: null });
+        setSaveResult({ success: true, error: null, warning: finalData.warning || null });
         // React state updates are asynchronous, so test the returned path directly.
         await testConnection(finalData.dbPath);
       } else {
@@ -427,12 +423,19 @@ export default function SettingsPage() {
                   borderRadius: 'var(--radius-sm)',
                   background: saveResult.success ? 'var(--green-dim)' : 'var(--red-dim)',
                   border: `1px solid ${saveResult.success ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
-                  {saveResult.success
-                    ? <><CheckCircle size={14} style={{ color: 'var(--green)' }} /><span style={{ fontSize: '0.855rem', color: 'var(--green)' }}>{t('settings.toast_success')}</span></>
-                    : <><XCircle size={14} style={{ color: 'var(--red)' }} /><span style={{ fontSize: '0.855rem', color: 'var(--red)' }}>{saveResult.error || t('settings.toast_error')}</span></>
-                  }
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {saveResult.success
+                      ? <><CheckCircle size={14} style={{ color: 'var(--green)' }} /><span style={{ fontSize: '0.855rem', color: 'var(--green)' }}>{t('settings.toast_success')}</span></>
+                      : <><XCircle size={14} style={{ color: 'var(--red)' }} /><span style={{ fontSize: '0.855rem', color: 'var(--red)' }}>{saveResult.error || t('settings.toast_error')}</span></>
+                    }
+                  </div>
+                  {saveResult.warning && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--yellow)', paddingInlineStart: 22 }}>
+                      ⚠️ {saveResult.warning}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
