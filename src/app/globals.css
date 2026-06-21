@@ -920,7 +920,11 @@ select.input-field {
 /* ==================== Animations ==================== */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  /* Use `none` (not translateY(0)) so the finished animation doesn't leave a
+     transform applied. A lingering transform would create a stacking context
+     that traps high-z-index children — e.g. the DatePicker popover rendering
+     behind sibling chart cards on the Reports page. */
+  to { opacity: 1; transform: none; }
 }
 
 .fade-in { animation: fadeInUp 0.35s ease forwards; }
