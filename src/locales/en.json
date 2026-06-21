@@ -1,0 +1,147 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "attendance": "Attendance",
+    "employees": "Employees",
+    "reports": "Reports",
+    "settings": "Settings",
+    "main_menu": "Main Menu",
+    "system": "System"
+  },
+  "topbar": {
+    "dashboard_title": "Dashboard",
+    "dashboard_sub": "Overview of today's attendance",
+    "attendance_title": "Attendance Records",
+    "attendance_sub": "Browse and filter all check-in/out records",
+    "employees_title": "Employees",
+    "employees_sub": "Employee attendance summaries",
+    "reports_title": "Reports & Analytics",
+    "reports_sub": "Detailed attendance analysis",
+    "settings_title": "Settings",
+    "settings_sub": "Configure database and work hours"
+  },
+  "dashboard": {
+    "greeting_morning": "Good morning 👋",
+    "greeting_afternoon": "Good afternoon 👋",
+    "greeting_evening": "Good evening 👋",
+    "subtitle": "Here's what's happening with attendance today",
+    "refresh": "Refresh",
+    "loading": "Loading dashboard data...",
+    "total_employees": "Total Employees",
+    "total_employees_sub": "Registered in system",
+    "present_today": "Present Today",
+    "present_today_sub": "{rate}% attendance rate",
+    "late_arrivals": "Late Arrivals",
+    "late_arrivals_sub": "Checked in after start time",
+    "absent_today": "Absent Today",
+    "absent_today_sub": "No record today",
+    "attendance_trend": "Attendance Trend",
+    "last_30_days": "Last 30 days",
+    "todays_breakdown": "Today's Breakdown",
+    "recent_activity": "Recent Activity",
+    "no_recent_activity": "No recent activity",
+    "badge": "Badge"
+  },
+  "attendance": {
+    "records": "Attendance Records",
+    "no_records": "No records found",
+    "records_found": "{count} records found",
+    "loading": "Loading...",
+    "export_btn": "Export",
+    "exporting": "Exporting...",
+    "search": "Search employee...",
+    "from_date": "From Date",
+    "to_date": "To Date",
+    "all_status": "All Status",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "reset": "Reset",
+    "table": {
+      "date": "Date",
+      "badge": "Badge #",
+      "name": "Name",
+      "department": "Department",
+      "status": "Status",
+      "check_in": "Check-In",
+      "check_out": "Check-Out",
+      "duration": "Duration"
+    },
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} records",
+      "limit": "Records per page: "
+    }
+  },
+  "employees": {
+    "summary": "Employee Summary",
+    "employees_period": "{count} employees · {from} to {to}",
+    "search": "Search employee...",
+    "computing": "Computing employee summaries...",
+    "no_employees": "No employees found",
+    "no_employees_sub": "Try a different date range or search term",
+    "table": {
+      "badge": "Badge #",
+      "name": "Name",
+      "department": "Department",
+      "total_days": "Total Days",
+      "present": "Present",
+      "late": "Late",
+      "total_hours": "Total Hours",
+      "avg_day": "Avg/Day",
+      "attendance_rate": "Attendance Rate"
+    }
+  },
+  "reports": {
+    "title": "Reports & Analytics",
+    "subtitle": "Attendance analysis for selected period",
+    "period": "Period:",
+    "generating": "Generating reports...",
+    "trend_30_days": "Attendance Trend — Last 30 Days",
+    "status_today": "Status Breakdown (Today)",
+    "top_late": "⚠ Top Late Arrivals",
+    "top_hours": "⏱ Top Working Hours",
+    "table_late": {
+      "number": "#",
+      "employee": "Employee",
+      "department": "Department",
+      "late_days": "Late Days",
+      "total_days": "Total Days",
+      "late_rate": "Late Rate"
+    },
+    "table_hours": {
+      "number": "#",
+      "employee": "Employee",
+      "department": "Department",
+      "total_hours": "Total Hours",
+      "avg_day": "Avg/Day",
+      "attendance_rate": "Attendance Rate"
+    }
+  },
+  "settings": {
+    "title": "Database Settings",
+    "subtitle": "Configure the connection to your ZK Access database",
+    "saving": "Saving...",
+    "save": "Save Settings",
+    "current_path": "Current Path",
+    "browse": "Browse",
+    "test_connection": "Test Connection",
+    "testing": "Testing...",
+    "connection_success": "✅ Connection successful",
+    "connection_failed": "❌ Connection failed",
+    "employees_found": "employees found",
+    "database_tables": "database tables",
+    "tables_found": "tables found",
+    "zk_tables": "ZK Access tables",
+    "found": "found",
+    "missing": "missing",
+    "work_hours": "Work Hours Configuration",
+    "work_hours_sub": "Used to calculate late arrivals and working hours",
+    "start_time": "Start Time",
+    "end_time": "End Time",
+    "toast_success": "Settings saved successfully",
+    "toast_error": "Error saving settings"
+  },
+  "datepicker": {
+    "select_date": "Select date"
+  }
+}

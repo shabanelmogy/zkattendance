@@ -1,0 +1,147 @@
+{
+  "sidebar": {
+    "dashboard": "لوحة القيادة",
+    "attendance": "الحضور والانصراف",
+    "employees": "الموظفين",
+    "reports": "التقارير والإحصائيات",
+    "settings": "الإعدادات",
+    "main_menu": "القائمة الرئيسية",
+    "system": "النظام"
+  },
+  "topbar": {
+    "dashboard_title": "لوحة القيادة",
+    "dashboard_sub": "نظرة عامة على حضور اليوم",
+    "attendance_title": "سجلات الحضور",
+    "attendance_sub": "تصفح وتصفية جميع سجلات تسجيل الدخول / الخروج",
+    "employees_title": "الموظفين",
+    "employees_sub": "ملخصات حضور الموظفين",
+    "reports_title": "التقارير والإحصائيات",
+    "reports_sub": "تحليل مفصل للحضور",
+    "settings_title": "الإعدادات",
+    "settings_sub": "تكوين قاعدة البيانات وساعات العمل"
+  },
+  "dashboard": {
+    "greeting_morning": "صباح الخير 👋",
+    "greeting_afternoon": "مساء الخير 👋",
+    "greeting_evening": "مساء الخير 👋",
+    "subtitle": "إليك ما يحدث مع الحضور اليوم",
+    "refresh": "تحديث",
+    "loading": "جاري تحميل بيانات لوحة القيادة...",
+    "total_employees": "إجمالي الموظفين",
+    "total_employees_sub": "مسجل في النظام",
+    "present_today": "حاضر اليوم",
+    "present_today_sub": "معدل الحضور {rate}%",
+    "late_arrivals": "الوافدين المتأخرين",
+    "late_arrivals_sub": "تم تسجيل الدخول بعد وقت البدء",
+    "absent_today": "غائب اليوم",
+    "absent_today_sub": "لا يوجد سجل اليوم",
+    "attendance_trend": "اتجاه الحضور",
+    "last_30_days": "آخر 30 يومًا",
+    "todays_breakdown": "تفصيل اليوم",
+    "recent_activity": "النشاط الأخير",
+    "no_recent_activity": "لا يوجد نشاط حديث",
+    "badge": "بصمة"
+  },
+  "attendance": {
+    "records": "سجلات الحضور",
+    "no_records": "لا توجد سجلات",
+    "records_found": "تم العثور على {count} سجل",
+    "loading": "جاري التحميل...",
+    "export_btn": "تصدير",
+    "exporting": "جاري التصدير...",
+    "search": "البحث عن موظف...",
+    "from_date": "من تاريخ",
+    "to_date": "إلى تاريخ",
+    "all_status": "جميع الحالات",
+    "present": "حاضر",
+    "late": "متأخر",
+    "absent": "غائب",
+    "reset": "إعادة تعيين",
+    "table": {
+      "date": "التاريخ",
+      "badge": "رقم البصمة",
+      "name": "الاسم",
+      "department": "القسم",
+      "status": "الحالة",
+      "check_in": "تسجيل الدخول",
+      "check_out": "تسجيل الخروج",
+      "duration": "المدة"
+    },
+    "pagination": {
+      "showing": "عرض {start} إلى {end} من {total} سجل",
+      "limit": "السجلات لكل صفحة: "
+    }
+  },
+  "employees": {
+    "summary": "ملخص الموظف",
+    "employees_period": "{count} موظف · {from} إلى {to}",
+    "search": "البحث عن موظف...",
+    "computing": "جاري حساب ملخصات الموظفين...",
+    "no_employees": "لم يتم العثور على موظفين",
+    "no_employees_sub": "جرب نطاق زمني أو مصطلح بحث مختلف",
+    "table": {
+      "badge": "رقم البصمة",
+      "name": "الاسم",
+      "department": "القسم",
+      "total_days": "إجمالي الأيام",
+      "present": "حاضر",
+      "late": "متأخر",
+      "total_hours": "إجمالي الساعات",
+      "avg_day": "المتوسط/اليوم",
+      "attendance_rate": "معدل الحضور"
+    }
+  },
+  "reports": {
+    "title": "التقارير والإحصائيات",
+    "subtitle": "تحليل الحضور للفترة المحددة",
+    "period": "الفترة:",
+    "generating": "جاري إنشاء التقارير...",
+    "trend_30_days": "اتجاه الحضور — آخر 30 يومًا",
+    "status_today": "تفصيل الحالة (اليوم)",
+    "top_late": "⚠ أعلى الوافدين المتأخرين",
+    "top_hours": "⏱ أعلى ساعات العمل",
+    "table_late": {
+      "number": "#",
+      "employee": "الموظف",
+      "department": "القسم",
+      "late_days": "أيام التأخير",
+      "total_days": "إجمالي الأيام",
+      "late_rate": "معدل التأخير"
+    },
+    "table_hours": {
+      "number": "#",
+      "employee": "الموظف",
+      "department": "القسم",
+      "total_hours": "إجمالي الساعات",
+      "avg_day": "المتوسط/اليوم",
+      "attendance_rate": "معدل الحضور"
+    }
+  },
+  "settings": {
+    "title": "إعدادات قاعدة البيانات",
+    "subtitle": "قم بتكوين الاتصال بقاعدة بيانات ZK Access الخاصة بك",
+    "saving": "جاري الحفظ...",
+    "save": "حفظ الإعدادات",
+    "current_path": "المسار الحالي",
+    "browse": "تصفح",
+    "test_connection": "اختبار الاتصال",
+    "testing": "جاري الاختبار...",
+    "connection_success": "✅ تم الاتصال بنجاح",
+    "connection_failed": "❌ فشل الاتصال",
+    "employees_found": "موظف تم العثور عليهم",
+    "database_tables": "جداول قاعدة البيانات",
+    "tables_found": "جدول تم العثور عليه",
+    "zk_tables": "جداول ZK Access",
+    "found": "موجود",
+    "missing": "مفقود",
+    "work_hours": "تكوين ساعات العمل",
+    "work_hours_sub": "تستخدم لحساب الوافدين المتأخرين وساعات العمل",
+    "start_time": "وقت البدء",
+    "end_time": "وقت الانتهاء",
+    "toast_success": "تم حفظ الإعدادات بنجاح",
+    "toast_error": "خطأ في حفظ الإعدادات"
+  },
+  "datepicker": {
+    "select_date": "حدد التاريخ"
+  }
+}
