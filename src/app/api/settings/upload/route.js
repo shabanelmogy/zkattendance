@@ -4,19 +4,18 @@ import path from 'path';
 
 export async function POST(request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+    const fileNameHeader = request.headers.get('x-file-name');
+    if (!fileNameHeader) {
+      return NextResponse.json({ error: 'No file uploaded or filename missing.' }, { status: 400 });
     }
+    const fileName = decodeURIComponent(fileNameHeader);
 
-    if (!file.name.endsWith('.mdb') && !file.name.endsWith('.accdb')) {
+    if (!fileName.endsWith('.mdb') && !fileName.endsWith('.accdb')) {
       return NextResponse.json({ error: 'Only MS Access database files (.mdb, .accdb) are allowed.' }, { status: 400 });
     }
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
+    // Convert raw request body to buffer
+    const arrayBuffer = await request.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     // Ensure data directory exists
@@ -28,7 +27,7 @@ export async function POST(request) {
     // Generate unique filename to avoid locking issues, or just overwrite attBackup.mdb
     // ZK Attendance database is usually attBackup.mdb. Let's just use the uploaded file name
     // but sanitize it.
-    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const safeName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const destPath = path.join(dataDir, safeName);
 
     // Save file

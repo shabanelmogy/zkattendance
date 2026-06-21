@@ -120,13 +120,11 @@ export default function SettingsPage() {
     setTestResult(null);
     setSaveResult(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
       const data = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/settings/upload');
+        xhr.setRequestHeader('x-file-name', encodeURIComponent(file.name));
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             setUploadProgress(Math.round((event.loaded / event.total) * 100));
@@ -140,7 +138,7 @@ export default function SettingsPage() {
           }
         };
         xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(formData);
+        xhr.send(file);
       });
 
       if (data.success) {
