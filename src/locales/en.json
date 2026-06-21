@@ -128,7 +128,7 @@
     "path_option_help": "Reference a database already available on this computer. The file is not uploaded or copied.",
     "upload_option": "Upload database copy",
     "upload_option_help": "Choose a database from your computer and copy it into the project's data folder.",
-    "upload_database": "Upload Database",
+    "upload_database": "Choose File and Upload",
     "uploading_database": "Uploading... {progress}%",
     "test_connection": "Test Connection",
     "testing": "Testing...",

@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { handleUpload } from '@vercel/blob/client';
+import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage } from '@/lib/db';
+
+export const runtime = 'nodejs';
+
+export async function GET() {
+  if (hasBlobStorage()) {
+    return NextResponse.json({ storage: 'blob', dbPath: BLOB_DB_SOURCE });
+  }
+
+  if (process.env.VERCEL) {
+    return NextResponse.json({
+      storage: 'unconfigured',
+      error: 'Connect a private Vercel Blob store to this project before uploading a database.',
+    });
+  }
+
+  return NextResponse.json({ storage: 'filesystem' });
+}
 
 // Vercel has a 4.5MB body size limit for serverless functions.
 // We handle chunked uploads: each chunk is sent separately,
@@ -8,6 +27,41 @@ import path from 'path';
 
 export async function POST(request) {
   try {
+    if (hasBlobStorage() && request.headers.get('content-type')?.includes('application/json')) {
+      const body = await request.json();
+      const result = await handleUpload({
+        body,
+        request,
+        onBeforeGenerateToken: async (pathname, clientPayload) => {
+          if (pathname !== BLOB_DB_PATH) {
+            throw new Error('Invalid database upload path.');
+          }
+
+          if (!clientPayload || !/\.(mdb|accdb)$/i.test(clientPayload)) {
+            throw new Error('Only MS Access database files (.mdb, .accdb) are allowed.');
+          }
+
+          return {
+            maximumSizeInBytes: 500 * 1024 * 1024,
+            addRandomSuffix: false,
+            allowOverwrite: true,
+            tokenPayload: clientPayload,
+          };
+        },
+        onUploadCompleted: async () => {},
+      });
+
+      return NextResponse.json(result);
+    }
+
+    if (process.env.VERCEL) {
+      return NextResponse.json({
+        error: hasBlobStorage()
+          ? 'Deployed database uploads must use the Vercel Blob client upload flow.'
+          : 'Connect a private Vercel Blob store to this project before uploading a database.',
+      }, { status: 503 });
+    }
+
     const fileNameHeader = request.headers.get('x-file-name');
     if (!fileNameHeader) {
       return NextResponse.json({ error: 'No file uploaded or filename missing.' }, { status: 400 });

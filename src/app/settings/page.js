@@ -4,6 +4,10 @@ import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import { Settings as SettingsIcon, FolderOpen, Database, CheckCircle, XCircle, Save, RefreshCw, HardDrive, ChevronRight, FileText, ArrowLeft, Clock, Upload } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
+import { upload } from '@vercel/blob/client';
+
+const BLOB_DB_PATH = 'zkattendance/database.mdb';
+const BLOB_DB_SOURCE = `blob:${BLOB_DB_PATH}`;
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({ dbPath: '', workStartHour: 8, workEndHour: 17 });
@@ -14,6 +18,8 @@ export default function SettingsPage() {
   const [saveResult, setSaveResult] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [storageMode, setStorageMode] = useState(null);
+  const [storageError, setStorageError] = useState(null);
   const uploadInputRef = useRef(null);
   const { t } = useI18n();
 
@@ -22,12 +28,15 @@ export default function SettingsPage() {
 
   // Load current settings on mount
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(s => {
+    Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch('/api/settings/upload').then(r => r.json()),
+    ]).then(([s, uploadConfig]) => {
         setSettings({ dbPath: s.dbPath || '', workStartHour: s.workStartHour || 8, workEndHour: s.workEndHour || 17 });
         setEditPath(s.dbPath || '');
-      });
+        setStorageMode(uploadConfig.storage);
+        setStorageError(uploadConfig.error || null);
+      }).catch(error => setStorageError(error.message));
   }, []);
 
   // Browse a directory
@@ -132,6 +141,35 @@ export default function SettingsPage() {
     setSaveResult(null);
 
     try {
+      let mode = storageMode;
+      if (!mode) {
+        const config = await fetch('/api/settings/upload').then(r => r.json());
+        mode = config.storage;
+        setStorageMode(mode);
+        setStorageError(config.error || null);
+      }
+
+      if (mode === 'unconfigured') {
+        throw new Error(storageError || 'Connect a private Vercel Blob store before uploading a database.');
+      }
+
+      if (mode === 'blob') {
+        await upload(BLOB_DB_PATH, file, {
+          access: 'private',
+          handleUploadUrl: '/api/settings/upload',
+          clientPayload: file.name,
+          multipart: true,
+          onUploadProgress: ({ percentage }) => setUploadProgress(Math.round(percentage)),
+        });
+
+        const uploadedSettings = { ...settings, dbPath: BLOB_DB_SOURCE, storage: 'blob' };
+        setSettings(uploadedSettings);
+        setEditPath(BLOB_DB_SOURCE);
+        setSaveResult({ success: true, error: null });
+        await testConnection(BLOB_DB_SOURCE);
+        return;
+      }
+
       const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB per chunk (under Vercel's 4.5MB limit)
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
       const uploadId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -272,6 +310,7 @@ export default function SettingsPage() {
                     placeholder="C:\path\to\your\database.mdb"
                     value={editPath}
                     onChange={e => { setEditPath(e.target.value); setTestResult(null); setSaveResult(null); }}
+                    disabled={storageMode !== 'filesystem'}
                     dir="ltr"
                   />
                   <button
@@ -279,7 +318,8 @@ export default function SettingsPage() {
                     className="btn btn-outline"
                     style={{ height: 42, gap: 6 }}
                     onClick={openBrowser}
-                    title="Browse Server Files"
+                    title={storageMode === 'filesystem' ? 'Browse files on this computer' : 'Path selection is available only when the app runs on this computer'}
+                    disabled={storageMode !== 'filesystem'}
                   >
                     <FolderOpen size={15} /> {t('settings.browse') || 'Browse'}
                   </button>
@@ -298,7 +338,7 @@ export default function SettingsPage() {
                     id="save-settings-btn"
                     className="btn btn-primary"
                     onClick={saveSettings}
-                    disabled={saving || !editPath || !hasChanges}
+                    disabled={saving || storageMode !== 'filesystem' || !editPath || !hasChanges}
                     style={{ opacity: (!editPath || !hasChanges) ? 0.5 : 1 }}
                   >
                     {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Save size={14} />}
@@ -338,6 +378,9 @@ export default function SettingsPage() {
                   {uploading ? <span className="spinner" style={{ width: 15, height: 15, borderWidth: 2 }} /> : <Upload size={15} />}
                   {uploading ? t('settings.uploading_database', { progress: uploadProgress }) : t('settings.upload_database')}
                 </button>
+                {storageError && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--red)' }}>{storageError}</div>
+                )}
                 {uploading && (
                   <div style={{ width: '100%', height: 4, background: 'var(--border-strong)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{ height: '100%', background: 'var(--accent-blue)', width: `${uploadProgress}%`, transition: 'width 0.2s ease-out' }} />

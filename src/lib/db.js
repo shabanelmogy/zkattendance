@@ -14,9 +14,16 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 import fs from 'fs';
+import { get as getBlob } from '@vercel/blob';
 
 const SETTINGS_FILE = path.join(process.cwd(), 'settings.json');
 const DEFAULT_DB = path.join(process.cwd(), '..', 'attBackup.mdb');
+export const BLOB_DB_PATH = 'zkattendance/database.mdb';
+export const BLOB_DB_SOURCE = `blob:${BLOB_DB_PATH}`;
+
+export function hasBlobStorage() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
 
 /** Read DB path dynamically — changes in Settings page take effect immediately */
 function getDbPath() {
@@ -34,9 +41,46 @@ import MDBReader from 'mdb-reader';
 let cachedDbPath = null;
 let cachedMtime = null;
 let cachedReader = null;
+let blobReaderPromise = null;
 
-export function getReader() {
-  const dbPath = getDbPath();
+export async function getReader(source) {
+  if (source?.startsWith('blob:') && !hasBlobStorage()) {
+    throw new Error('Vercel Blob storage is not configured.');
+  }
+
+  if ((source?.startsWith('blob:') || !source) && hasBlobStorage()) {
+    if (!blobReaderPromise) {
+      blobReaderPromise = (async () => {
+        const blobResult = await getBlob(BLOB_DB_PATH, {
+          access: 'private',
+          useCache: false,
+          ifNoneMatch: cachedDbPath === BLOB_DB_SOURCE ? cachedMtime : undefined,
+        });
+
+        if (!blobResult) {
+          throw new Error('No database has been uploaded to Vercel Blob yet.');
+        }
+
+        if (blobResult.statusCode === 304 && cachedReader) {
+          return cachedReader;
+        }
+
+        const buffer = Buffer.from(await new Response(blobResult.stream).arrayBuffer());
+        cachedReader = new MDBReader(buffer);
+        cachedDbPath = BLOB_DB_SOURCE;
+        cachedMtime = blobResult.blob.etag;
+        return cachedReader;
+      })();
+    }
+
+    try {
+      return await blobReaderPromise;
+    } finally {
+      blobReaderPromise = null;
+    }
+  }
+
+  const dbPath = source || getDbPath();
   
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database file not found at ${dbPath}`);
@@ -56,7 +100,7 @@ export function getReader() {
 }
 
 export async function getTableData(tableName) {
-  const reader = getReader();
+  const reader = await getReader();
   const table = reader.getTable(tableName);
   if (!table) return [];
   

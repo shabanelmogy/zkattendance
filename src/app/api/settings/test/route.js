@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import MDBReader from 'mdb-reader';
+import { getReader } from '@/lib/db';
 
 export async function POST(request) {
   try {
@@ -9,13 +9,14 @@ export async function POST(request) {
 
     if (!dbPath) return NextResponse.json({ error: 'No path provided' }, { status: 400 });
 
-    const normalised = path.resolve(dbPath);
+    const isBlob = dbPath.startsWith('blob:');
+    const normalised = isBlob ? dbPath : path.resolve(dbPath);
 
-    if (!fs.existsSync(normalised)) {
+    if (!isBlob && !fs.existsSync(normalised)) {
       return NextResponse.json({ success: false, error: `File not found: ${normalised}` });
     }
 
-    const ext = path.extname(normalised).toLowerCase();
+    const ext = isBlob ? '.mdb' : path.extname(normalised).toLowerCase();
     if (ext !== '.mdb' && ext !== '.accdb') {
       return NextResponse.json({ success: false, error: 'File must be .mdb or .accdb' });
     }
@@ -30,8 +31,7 @@ export async function POST(request) {
 
 async function testConnection(dbPath) {
   try {
-    const buffer = fs.readFileSync(dbPath);
-    const reader = new MDBReader(buffer);
+    const reader = await getReader(dbPath);
 
     const tables = reader.getTableNames();
     const hasCheckin = tables.includes('CHECKINOUT');
