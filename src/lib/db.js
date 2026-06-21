@@ -22,7 +22,11 @@ export const BLOB_DB_PATH = 'zkattendance/database.mdb';
 export const BLOB_DB_SOURCE = `blob:${BLOB_DB_PATH}`;
 
 export function hasBlobStorage() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN);
+}
+
+export function getBlobToken() {
+  return process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN || '';
 }
 
 /** Read DB path dynamically — changes in Settings page take effect immediately */
@@ -65,6 +69,7 @@ export async function getReader(source) {
       blobReaderPromise = (async () => {
         const blobResult = await getBlob(BLOB_DB_PATH, {
           access: 'public',
+          token: getBlobToken(),
           useCache: false,
           ifNoneMatch: cachedDbPath === BLOB_DB_SOURCE ? cachedMtime : undefined,
         });

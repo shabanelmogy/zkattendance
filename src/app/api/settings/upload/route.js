@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { put } from '@vercel/blob';
-import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage } from '@/lib/db';
+import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage, getBlobToken } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +12,10 @@ export async function GET() {
   }
 
   if (process.env.VERCEL) {
-    return NextResponse.json({ storage: 'vercel-tmp' });
+    return NextResponse.json({
+      storage: 'vercel-tmp',
+      hint: 'Add BLOB_READ_WRITE_TOKEN to your Vercel environment variables for permanent storage.',
+    });
   }
 
   return NextResponse.json({ storage: 'filesystem' });
@@ -85,6 +88,7 @@ export async function POST(request) {
           await put(BLOB_DB_PATH, fullBuffer, {
             access: 'public',
             addRandomSuffix: false,
+            token: getBlobToken(),
           });
 
           return NextResponse.json({ success: true, dbPath: BLOB_DB_SOURCE, settings: { dbPath: BLOB_DB_SOURCE } });
@@ -97,6 +101,7 @@ export async function POST(request) {
       await put(BLOB_DB_PATH, buffer, {
         access: 'public',
         addRandomSuffix: false,
+        token: getBlobToken(),
       });
 
       return NextResponse.json({ success: true, dbPath: BLOB_DB_SOURCE, settings: { dbPath: BLOB_DB_SOURCE } });

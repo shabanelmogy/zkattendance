@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { head } from '@vercel/blob';
-import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage } from '@/lib/db';
+import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage, getBlobToken } from '@/lib/db';
 
 const SETTINGS_FILE = path.join(process.cwd(), 'settings.json');
 
@@ -28,7 +28,7 @@ export async function GET() {
 
   if (hasBlobStorage()) {
     try {
-      await head(BLOB_DB_PATH);
+      await head(BLOB_DB_PATH, { token: getBlobToken() });
       return NextResponse.json({ ...settings, dbPath: BLOB_DB_SOURCE, storage: 'blob' });
     } catch {
       return NextResponse.json({ ...settings, dbPath: '', storage: 'blob' });
