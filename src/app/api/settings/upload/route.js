@@ -7,14 +7,20 @@ import { BLOB_DB_PATH, BLOB_DB_SOURCE, hasBlobStorage, getBlobToken } from '@/li
 export const runtime = 'nodejs';
 
 export async function GET() {
-  if (hasBlobStorage()) {
+  const hasToken = hasBlobStorage();
+  
+  if (hasToken) {
     return NextResponse.json({ storage: 'blob', dbPath: BLOB_DB_SOURCE });
   }
 
   if (process.env.VERCEL) {
     return NextResponse.json({
       storage: 'vercel-tmp',
-      hint: 'Add BLOB_READ_WRITE_TOKEN to your Vercel environment variables for permanent storage.',
+      debug: {
+        hasToken: false,
+        envKeys: Object.keys(process.env).filter(k => k.includes('BLOB')).join(', ') || 'none',
+      },
+      hint: 'BLOB_READ_WRITE_TOKEN not found. Make sure the env var is set for Production and redeploy.',
     });
   }
 
@@ -175,7 +181,7 @@ export async function POST(request) {
           settings.dbPath = destPath;
           fs.writeFileSync(tmpSettingsFile, JSON.stringify(settings, null, 2), 'utf8');
 
-          return NextResponse.json({ success: true, dbPath: destPath, settings, warning: 'Database stored in temporary storage. It will be lost when the server restarts. For permanent storage, add Vercel Blob to your project.' });
+          return NextResponse.json({ success: true, dbPath: destPath, settings });
         }
 
         return NextResponse.json({ success: true, chunk: currentChunk, total });
@@ -192,7 +198,7 @@ export async function POST(request) {
       settings.dbPath = destPath;
       fs.writeFileSync(tmpSettingsFile, JSON.stringify(settings, null, 2), 'utf8');
 
-      return NextResponse.json({ success: true, dbPath: destPath, settings, warning: 'Database stored in temporary storage. It will be lost when the server restarts. For permanent storage, add Vercel Blob to your project.' });
+      return NextResponse.json({ success: true, dbPath: destPath, settings });
     }
 
     // ===== LOCAL FILESYSTEM (self-hosted) =====
