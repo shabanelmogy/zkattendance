@@ -3,10 +3,6 @@ import fs from 'fs';
 import path from 'path';
 
 // Vercel has a 4.5MB body size limit for serverless functions.
-// This route supports chunked uploads to handle larger database files.
-// Each chunk should be under 4MB to stay within the limit.
-
-// Vercel has a 4.5MB body size limit for serverless functions.
 // We handle chunked uploads: each chunk is sent separately,
 // then assembled on the final request.
 
@@ -17,8 +13,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No file uploaded or filename missing.' }, { status: 400 });
     }
     const fileName = decodeURIComponent(fileNameHeader);
+    const extension = path.extname(fileName).toLowerCase();
 
-    if (!fileName.endsWith('.mdb') && !fileName.endsWith('.accdb')) {
+    if (extension !== '.mdb' && extension !== '.accdb') {
       return NextResponse.json({ error: 'Only MS Access database files (.mdb, .accdb) are allowed.' }, { status: 400 });
     }
 
@@ -37,8 +34,18 @@ export async function POST(request) {
     const arrayBuffer = await request.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    if (buffer.length === 0) {
+      return NextResponse.json({ error: 'The selected database file is empty.' }, { status: 400 });
+    }
+
     // If chunked upload
     if (chunkIndex !== null && totalChunks !== null && uploadId) {
+      const currentChunk = Number(chunkIndex);
+      const total = Number(totalChunks);
+      if (!/^[-_a-zA-Z0-9]+$/.test(uploadId) || !Number.isInteger(currentChunk) || !Number.isInteger(total) || currentChunk < 0 || total < 1 || currentChunk >= total) {
+        return NextResponse.json({ error: 'Invalid upload chunk metadata.' }, { status: 400 });
+      }
+
       const chunksDir = path.join(dataDir, `_chunks_${uploadId}`);
       if (!fs.existsSync(chunksDir)) {
         fs.mkdirSync(chunksDir, { recursive: true });
@@ -47,9 +54,6 @@ export async function POST(request) {
       // Save this chunk
       const chunkPath = path.join(chunksDir, `chunk_${chunkIndex.padStart(6, '0')}`);
       fs.writeFileSync(chunkPath, buffer);
-
-      const currentChunk = parseInt(chunkIndex);
-      const total = parseInt(totalChunks);
 
       // If this is the last chunk, assemble the file
       if (currentChunk === total - 1) {

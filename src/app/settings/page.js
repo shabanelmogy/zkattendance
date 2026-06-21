@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import { Settings as SettingsIcon, FolderOpen, Database, CheckCircle, XCircle, Save, RefreshCw, HardDrive, ChevronRight, FileText, ArrowLeft, Clock, Upload } from 'lucide-react';
@@ -14,7 +14,8 @@ export default function SettingsPage() {
   const [saveResult, setSaveResult] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { t, lang } = useI18n();
+  const uploadInputRef = useRef(null);
+  const { t } = useI18n();
 
   // File browser state
   const [browser, setBrowser] = useState({ open: false, current: '', items: [], loading: false, error: null });
@@ -64,14 +65,15 @@ export default function SettingsPage() {
   };
 
   // Test the connection
-  const testConnection = async () => {
+  const testConnection = async (dbPath) => {
+    const pathToTest = dbPath || editPath;
     setTesting(true);
     setTestResult(null);
     try {
       const res = await fetch('/api/settings/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dbPath: editPath }),
+        body: JSON.stringify({ dbPath: pathToTest }),
       });
       const data = await res.json();
       setTestResult(data);
@@ -112,8 +114,17 @@ export default function SettingsPage() {
 
   // Upload Database with chunked upload to avoid Vercel's 4.5MB body limit
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
+
+    // Clear now so choosing the same file after an error fires onChange again.
+    input.value = '';
+
+    if (!/\.(mdb|accdb)$/i.test(file.name)) {
+      setSaveResult({ success: false, error: 'Please select an MS Access database file (.mdb or .accdb).' });
+      return;
+    }
 
     setUploading(true);
     setUploadProgress(0);
@@ -140,9 +151,14 @@ export default function SettingsPage() {
           };
           xhr.onload = () => {
             try {
-              resolve(JSON.parse(xhr.responseText));
+              const data = JSON.parse(xhr.responseText);
+              if (xhr.status < 200 || xhr.status >= 300) {
+                reject(new Error(data.error || `Upload failed (${xhr.status})`));
+                return;
+              }
+              resolve(data);
             } catch (err) {
-              reject(new Error('Invalid response'));
+              reject(err instanceof SyntaxError ? new Error(`Upload failed (${xhr.status || 'invalid response'})`) : err);
             }
           };
           xhr.onerror = () => reject(new Error('Network error'));
@@ -185,8 +201,8 @@ export default function SettingsPage() {
         setSettings(finalData.settings);
         setEditPath(finalData.dbPath);
         setSaveResult({ success: true, error: null });
-        // Automatically test connection after upload
-        setTimeout(testConnection, 500);
+        // React state updates are asynchronous, so test the returned path directly.
+        await testConnection(finalData.dbPath);
       } else {
         setSaveResult({ success: false, error: finalData?.error || 'Upload failed' });
       }
@@ -194,8 +210,6 @@ export default function SettingsPage() {
       setSaveResult({ success: false, error: err.message });
     } finally {
       setUploading(false);
-      // Reset input value so same file can be selected again
-      e.target.value = '';
     }
   };
 
@@ -239,8 +253,16 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Path input row */}
-              <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+              {/* Existing path option — references the file without copying it. */}
+              <div style={{ display: 'flex', gap: 12, flexDirection: 'column', padding: 14, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    {t('settings.path_option')}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {t('settings.path_option_help')}
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     id="settings-db-path"
@@ -261,55 +283,66 @@ export default function SettingsPage() {
                   >
                     <FolderOpen size={15} /> {t('settings.browse') || 'Browse'}
                   </button>
-                  <label className="btn btn-primary" style={{ height: 42, gap: 6, cursor: 'pointer', margin: 0 }}>
-                    <input
-                      type="file"
-                      accept=".mdb,.accdb"
-                      style={{ display: 'none' }}
-                      onChange={handleUpload}
-                      disabled={uploading}
-                    />
-                    {uploading ? <span className="spinner" style={{ width: 15, height: 15, borderWidth: 2 }} /> : <Upload size={15} />}
-                    {uploading ? (lang === 'ar' ? `جاري الرفع... ${uploadProgress}%` : `Uploading... ${uploadProgress}%`) : (lang === 'ar' ? 'رفع قاعدة البيانات' : 'Upload Database')}
-                  </label>
                 </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    id="test-connection-btn"
+                    className="btn btn-outline"
+                    onClick={() => testConnection()}
+                    disabled={testing || !editPath}
+                  >
+                    {testing ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <RefreshCw size={14} />}
+                    {testing ? t('settings.testing') : t('settings.test_connection')}
+                  </button>
+                  <button
+                    id="save-settings-btn"
+                    className="btn btn-primary"
+                    onClick={saveSettings}
+                    disabled={saving || !editPath || !hasChanges}
+                    style={{ opacity: (!editPath || !hasChanges) ? 0.5 : 1 }}
+                  >
+                    {saving ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Save size={14} />}
+                    {saving ? t('settings.saving') : t('settings.save')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload option — copies the selected file into the project. */}
+              <div style={{ display: 'flex', gap: 12, flexDirection: 'column', padding: 14, border: '1px solid rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.04)', borderRadius: 'var(--radius-sm)' }}>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    {t('settings.upload_option')}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {t('settings.upload_option_help')}
+                  </div>
+                </div>
+                <input
+                  ref={uploadInputRef}
+                  id="upload-db-input"
+                  type="file"
+                  accept=".mdb,.accdb,application/x-msaccess,application/msaccess"
+                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  tabIndex={-1}
+                />
+                <button
+                  id="upload-db-btn"
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ height: 42, gap: 6, alignSelf: 'flex-start' }}
+                  onClick={() => uploadInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? <span className="spinner" style={{ width: 15, height: 15, borderWidth: 2 }} /> : <Upload size={15} />}
+                  {uploading ? t('settings.uploading_database', { progress: uploadProgress }) : t('settings.upload_database')}
+                </button>
                 {uploading && (
                   <div style={{ width: '100%', height: 4, background: 'var(--border-strong)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{ height: '100%', background: 'var(--accent-blue)', width: `${uploadProgress}%`, transition: 'width 0.2s ease-out' }} />
                   </div>
                 )}
-              </div>
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  id="test-connection-btn"
-                  className="btn btn-outline"
-                  onClick={testConnection}
-                  disabled={testing || !editPath}
-                >
-                  {testing ? (
-                    <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                  ) : (
-                    <RefreshCw size={14} />
-                  )}
-                  {testing ? t('settings.testing') : t('settings.test_connection')}
-                </button>
-
-                <button
-                  id="save-settings-btn"
-                  className="btn btn-primary"
-                  onClick={saveSettings}
-                  disabled={saving || !editPath || !hasChanges}
-                  style={{ opacity: (!editPath || !hasChanges) ? 0.5 : 1 }}
-                >
-                  {saving ? (
-                    <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
-                  ) : (
-                    <Save size={14} />
-                  )}
-                  {saving ? t('settings.saving') : t('settings.save')}
-                </button>
               </div>
 
               {/* Test Result */}
