@@ -86,7 +86,7 @@ export async function POST(request) {
 
           // Upload assembled file to Vercel Blob
           await put(BLOB_DB_PATH, fullBuffer, {
-            access: 'public',
+            access: 'private',
             addRandomSuffix: false,
             token: getBlobToken(),
           });
@@ -99,7 +99,7 @@ export async function POST(request) {
 
       // Single-request upload (small file) — upload directly to Vercel Blob
       await put(BLOB_DB_PATH, buffer, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         token: getBlobToken(),
       });
