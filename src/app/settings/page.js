@@ -110,7 +110,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Upload Database
+  // Upload Database with chunked upload to avoid Vercel's 4.5MB body limit
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,37 +121,77 @@ export default function SettingsPage() {
     setSaveResult(null);
 
     try {
-      const data = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/settings/upload');
-        xhr.setRequestHeader('x-file-name', encodeURIComponent(file.name));
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            setUploadProgress(Math.round((event.loaded / event.total) * 100));
-          }
-        };
-        xhr.onload = () => {
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch (err) {
-            reject(new Error('Invalid response'));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(file);
-      });
+      const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB per chunk (under Vercel's 4.5MB limit)
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const uploadId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-      if (data.success) {
-        setSettings(data.settings);
-        setEditPath(data.dbPath);
+      let finalData = null;
+
+      if (totalChunks <= 1) {
+        // Small file — send in one request
+        finalData = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/settings/upload');
+          xhr.setRequestHeader('x-file-name', encodeURIComponent(file.name));
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              setUploadProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          };
+          xhr.onload = () => {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (err) {
+              reject(new Error('Invalid response'));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Network error'));
+          xhr.send(file);
+        });
+      } else {
+        // Large file — send in chunks
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+
+          const res = await fetch('/api/settings/upload', {
+            method: 'POST',
+            headers: {
+              'x-file-name': encodeURIComponent(file.name),
+              'x-chunk-index': String(i),
+              'x-total-chunks': String(totalChunks),
+              'x-upload-id': uploadId,
+            },
+            body: chunk,
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed at chunk ${i + 1}`);
+          }
+
+          const data = await res.json();
+          setUploadProgress(Math.round(((i + 1) / totalChunks) * 100));
+
+          // Last chunk returns the final result
+          if (i === totalChunks - 1) {
+            finalData = data;
+          }
+        }
+      }
+
+      if (finalData && finalData.success) {
+        setSettings(finalData.settings);
+        setEditPath(finalData.dbPath);
         setSaveResult({ success: true, error: null });
         // Automatically test connection after upload
         setTimeout(testConnection, 500);
       } else {
-        setSaveResult({ success: false, error: data.error });
+        setSaveResult({ success: false, error: finalData?.error || 'Upload failed' });
       }
-    } catch (e) {
-      setSaveResult({ success: false, error: e.message });
+    } catch (err) {
+      setSaveResult({ success: false, error: err.message });
     } finally {
       setUploading(false);
       // Reset input value so same file can be selected again
