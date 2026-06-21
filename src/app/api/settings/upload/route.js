@@ -94,6 +94,7 @@ export async function POST(request) {
           await put(BLOB_DB_PATH, fullBuffer, {
             access: 'private',
             addRandomSuffix: false,
+            allowOverwrite: true,
             token: getBlobToken(),
           });
 
@@ -107,6 +108,7 @@ export async function POST(request) {
       await put(BLOB_DB_PATH, buffer, {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
         token: getBlobToken(),
       });
 
