@@ -2,6 +2,7 @@ import './globals.css';
 import './datepicker.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { I18nProvider } from '@/components/I18nProvider';
+import QueryProvider from '@/components/QueryProvider';
 
 export const metadata = {
   title: 'ZK Attendance | HR Dashboard',
@@ -21,11 +22,13 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <I18nProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </I18nProvider>
+        <QueryProvider>
+          <I18nProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </I18nProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import { AttendanceTrendChart, StatusPieChart } from '@/components/dashboard/Charts';
 import { LoadingSpinner } from '@/components/shared/States';
 import { Users, UserCheck, UserX, Clock, TrendingUp, ArrowUpRight, LogIn, LogOut } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
+import { useDashboard } from '@/lib/hooks';
 
 function StatCard({ icon: Icon, iconClass, cardClass, label, value, sub }) {
   return (
@@ -21,25 +22,9 @@ function StatCard({ icon: Icon, iconClass, cardClass, label, value, sub }) {
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { t } = useI18n();
-
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/dashboard');
-      if (!res.ok) throw new Error((await res.json()).error);
-      setStats(await res.json());
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  const queryClient = useQueryClient();
+  const { data: stats, isLoading, error, refetch } = useDashboard();
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -60,15 +45,15 @@ export default function DashboardPage() {
               <p className="page-subtitle">{t('dashboard.subtitle')}</p>
             </div>
             <div className="page-actions">
-              <button className="btn btn-outline" onClick={load}><TrendingUp size={14} /> {t('dashboard.refresh')}</button>
+              <button className="btn btn-outline" onClick={() => refetch()}><TrendingUp size={14} /> {t('dashboard.refresh')}</button>
             </div>
           </div>
 
-          {loading ? (
+          {isLoading ? (
             <LoadingSpinner text={t('dashboard.loading')} />
           ) : error ? (
             <div style={{ color: 'var(--red)', padding: 20, background: 'var(--red-dim)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239,68,68,0.3)' }}>
-              ⚠️ {error}
+              ⚠️ {error.message}
             </div>
           ) : (
             <>

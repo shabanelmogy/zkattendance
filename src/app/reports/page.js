@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import { TrendLineChart, StatusPieChart } from '@/components/dashboard/Charts';
@@ -8,6 +8,7 @@ import ExportButton from '@/components/shared/ExportButton';
 import DatePicker from '@/components/shared/DatePicker';
 import { BarChart2 } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
+import { useDashboard, useEmployeeSummary } from '@/lib/hooks';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthStart = today.slice(0, 8) + '01';
@@ -15,31 +16,13 @@ const monthStart = today.slice(0, 8) + '01';
 export default function ReportsPage() {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
-  const [stats, setStats] = useState(null);
-  const [empSummary, setEmpSummary] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { t } = useI18n();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [dashRes, empRes] = await Promise.all([
-        fetch(`/api/dashboard?date=${to}`),
-        fetch(`/api/employees?mode=summary&from=${from}&to=${to}`),
-      ]);
-      const dash = await dashRes.json();
-      const emp = await empRes.json();
-      setStats(dash);
-      setEmpSummary(emp);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [from, to]);
+  const { data: stats, isLoading: loadingDash, error: dashError } = useDashboard(to);
+  const { data: empSummary = [], isLoading: loadingEmp, error: empError } = useEmployeeSummary({ from, to });
 
-  useEffect(() => { load(); }, [load]);
+  const loading = loadingDash || loadingEmp;
+  const error = dashError || empError;
 
   // Top late arrivals (by lateDays)
   const topLate = [...empSummary].sort((a, b) => b.lateDays - a.lateDays).slice(0, 10);
@@ -83,7 +66,7 @@ export default function ReportsPage() {
           {loading ? (
             <LoadingSpinner text={t('reports.generating')} />
           ) : error ? (
-            <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error}</div>
+            <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error.message}</div>
           ) : (
             <>
               {/* Charts row */}

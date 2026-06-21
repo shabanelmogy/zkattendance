@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import ExportButton from '@/components/shared/ExportButton';
@@ -7,6 +7,7 @@ import DatePicker from '@/components/shared/DatePicker';
 import { LoadingSpinner } from '@/components/shared/States';
 import { Users, Search } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
+import { useEmployeeSummary } from '@/lib/hooks';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthStart = today.slice(0, 8) + '01';
@@ -15,42 +16,19 @@ export default function EmployeesPage() {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState('');
-  const [data, setData] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { t, lang } = useI18n();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/employees?mode=summary&from=${from}&to=${to}`);
-      if (!res.ok) throw new Error((await res.json()).error);
-      const result = await res.json();
-      setData(result);
-      setFiltered(result);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [from, to]);
+  const { data = [], isLoading, error } = useEmployeeSummary({ from, to });
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    if (!search) {
-      setFiltered(data);
-    } else {
-      const q = search.toLowerCase();
-      setFiltered(data.filter(e =>
-        e.name?.toLowerCase().includes(q) || e.badgeNumber?.toString().includes(q)
-      ));
-    }
-    setPage(1);
-  }, [search, data]);
+  const filtered = useMemo(() => {
+    if (!search) return data;
+    const q = search.toLowerCase();
+    return data.filter(e =>
+      e.name?.toLowerCase().includes(q) || e.badgeNumber?.toString().includes(q)
+    );
+  }, [data, search]);
 
   const total = filtered.length;
   const totalPages = limit === 999999 ? 1 : Math.ceil(total / limit) || 1;
@@ -88,7 +66,7 @@ export default function EmployeesPage() {
                     type="text"
                     placeholder={t('employees.search')}
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={e => { setSearch(e.target.value); setPage(1); }}
                   />
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -98,10 +76,10 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              {loading ? (
+              {isLoading ? (
                 <LoadingSpinner text={t('employees.computing')} />
               ) : error ? (
-                <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error}</div>
+                <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error.message}</div>
               ) : filtered.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center' }}>
                   <p style={{ color: 'var(--text-muted)', marginBottom: 8 }}>{t('employees.no_employees')}</p>

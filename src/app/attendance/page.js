@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import AttendanceTable from '@/components/attendance/AttendanceTable';
@@ -8,55 +8,42 @@ import ExportButton from '@/components/shared/ExportButton';
 import { LoadingSpinner } from '@/components/shared/States';
 import { CalendarCheck } from 'lucide-react';
 import { useI18n } from '@/components/I18nProvider';
+import { useAttendance } from '@/lib/hooks';
 
 const today = new Date().toISOString().slice(0, 10);
 
 export default function AttendancePage() {
   const [filters, setFilters] = useState({ from: today, to: today, search: '', status: '' });
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('asc');
   const { t } = useI18n();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({ page, limit, sortBy, sortOrder });
-      if (filters.from) params.set('from', filters.from);
-      if (filters.to) params.set('to', filters.to);
+  const { data, isLoading, error } = useAttendance({
+    from: filters.from,
+    to: filters.to,
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+  });
 
-      const res = await fetch(`/api/attendance?${params}`);
-      if (!res.ok) throw new Error((await res.json()).error);
-      let result = await res.json();
-
-      // Client-side filter by search & status
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        result.records = result.records.filter(r =>
-          r.name?.toLowerCase().includes(q) || r.badgeNumber?.toString().includes(q)
-        );
-      }
-      if (filters.status) {
-        let statusKey = filters.status;
-        if (filters.status === 'Present' || filters.status === 'Late' || filters.status === 'Absent') {
-          // MS Access returned it in English, so we filter by English.
-          result.records = result.records.filter(r => r.status === filters.status);
-        }
-      }
-
-      setData(result);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+  // Client-side filter by search & status (applied on top of server-paginated results)
+  const filteredRecords = useMemo(() => {
+    if (!data?.records) return [];
+    let records = data.records;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      records = records.filter(r =>
+        r.name?.toLowerCase().includes(q) || r.badgeNumber?.toString().includes(q)
+      );
     }
-  }, [filters, page, limit, sortBy, sortOrder]);
-
-  useEffect(() => { load(); }, [load]);
+    if (filters.status) {
+      records = records.filter(r => r.status === filters.status);
+    }
+    return records;
+  }, [data, filters.search, filters.status]);
 
   function resetFilters() {
     setFilters({ from: today, to: today, search: '', status: '' });
@@ -92,13 +79,13 @@ export default function AttendancePage() {
                 onReset={resetFilters}
               />
 
-              {loading ? (
+              {isLoading ? (
                 <LoadingSpinner text={t('attendance.loading')} />
               ) : error ? (
-                <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error}</div>
+                <div style={{ color: 'var(--red)', padding: 16, background: 'var(--red-dim)', borderRadius: 8 }}>⚠️ {error.message}</div>
               ) : (
                 <AttendanceTable
-                  records={data?.records || []}
+                  records={filteredRecords}
                   total={data?.total || 0}
                   page={page}
                   limit={limit}

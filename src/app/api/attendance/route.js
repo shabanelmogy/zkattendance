@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAttendanceRecords } from '@/lib/attendance';
+import { cached } from '@/lib/cache';
 
 export async function GET(request) {
   try {
@@ -12,7 +13,13 @@ export async function GET(request) {
     const sortBy = searchParams.get('sortBy') || 'date';
     const sortOrder = searchParams.get('sortOrder') || 'asc';
 
-    const result = await getAttendanceRecords({ from, to, empId, page, limit, sortBy, sortOrder });
+    const cacheKey = `attendance:${from?.toISOString() || ''}_${to?.toISOString() || ''}_${empId || ''}_${page}_${limit}_${sortBy}_${sortOrder}`;
+
+    const result = await cached(
+      cacheKey,
+      () => getAttendanceRecords({ from, to, empId, page, limit, sortBy, sortOrder }),
+      60 * 1000
+    );
     return NextResponse.json(result);
   } catch (error) {
     console.error('[/api/attendance]', error);
