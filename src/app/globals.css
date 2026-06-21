@@ -555,6 +555,8 @@ tbody tr:hover { background: var(--bg-card-hover); }
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 20px;
+  position: relative;
+  z-index: 10;
 }
 
 .input-field {
