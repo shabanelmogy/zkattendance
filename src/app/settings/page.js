@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const { t, lang } = useI18n();
 
   // File browser state
-  const [browser, setBrowser] = useState({ open: false, current: 'C:\\', items: [], loading: false, error: null });
+  const [browser, setBrowser] = useState({ open: false, current: '', items: [], loading: false, error: null });
 
   // Load current settings on mount
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function SettingsPage() {
   // Open browser
   const openBrowser = () => {
     const startDir = editPath
-      ? editPath.replace(/[^\\\/]*$/, '') || 'C:\\'
-      : 'C:\\';
+      ? editPath.replace(/[^\\\/]*$/, '') || ''
+      : '';
     setBrowser(b => ({ ...b, open: true }));
     browseTo(startDir);
   };
@@ -162,7 +162,7 @@ export default function SettingsPage() {
   const hasChanges = editPath !== settings.dbPath;
 
   // Drive quick-access buttons
-  const DRIVES = ['C:\\', 'D:\\', 'E:\\', 'F:\\', 'G:\\', 'H:\\'];
+  const DRIVES = ['Project', 'C:\\', 'D:\\', 'E:\\', 'F:\\', 'G:\\', 'H:\\'];
 
   return (
     <div className="app-layout">
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                     key={d}
                     className="btn btn-ghost"
                     style={{ padding: '4px 10px', fontSize: '0.75rem', height: 28, display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => browseTo(d)}
+                    onClick={() => browseTo(d === 'Project' ? '' : d)}
                   >
                     <HardDrive size={11} /> {d}
                   </button>

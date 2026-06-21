@@ -5,7 +5,7 @@ import path from 'path';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const dir = searchParams.get('path') || 'C:\\';
+    const dir = searchParams.get('path') || process.cwd();
 
     // Resolve and normalise
     const resolved = path.resolve(dir);
